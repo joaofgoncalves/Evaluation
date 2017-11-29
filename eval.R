@@ -1,13 +1,8 @@
-########################################################
-set.seed(777)
-actual = c('a','b','c')[runif(100, 1,4)]
-predicted = actual
-predicted[runif(30,1,100)] = actual[runif(30,1,100)]
-results = Evaluate(actual=actual, predicted=predicted)
-########################################################
 
-#input actual & predicted vectors or actual vs predicted confusion matrix 
+# Input actual & predicted vectors or actual vs predicted confusion matrix 
+
 Evaluate = function(actual=NULL, predicted=NULL, cm=NULL){
+
   if(is.null(cm)) {
     naVals = union(which(is.na(actual)), which(is.na(predicted)))
     if(length(naVals) > 0) {
@@ -28,20 +23,20 @@ Evaluate = function(actual=NULL, predicted=NULL, cm=NULL){
   p = rowsums / n # distribution of instances over the classes
   q = colsums / n # distribution of instances over the predicted classes
   
-  #accuracy
+  # accuracy
   accuracy = sum(diag) / n
   
-  #per class prf
+  # per class prf
   recall = diag / rowsums
   precision = diag / colsums
   f1 = 2 * precision * recall / (precision + recall)
   
-  #macro prf
+  # macro prf
   macroPrecision = mean(precision)
   macroRecall = mean(recall)
   macroF1 = mean(f1)
   
-  #1-vs-all matrix
+  # 1-vs-all matrix
   oneVsAll = lapply(1 : nc,
                     function(i){
                       v = c(cm[i,i],
@@ -51,33 +46,48 @@ Evaluate = function(actual=NULL, predicted=NULL, cm=NULL){
                       return(matrix(v, nrow = 2, byrow = T))})
   
   s = matrix(0, nrow=2, ncol=2)
-  for(i in 1:nc){s=s+oneVsAll[[i]]}
+
+  for(i in 1:nc){
+    s = s + oneVsAll[[i]]
+  }
   
-  #avg accuracy
+  # avg accuracy
   avgAccuracy = sum(diag(s))/sum(s)
   
-  #micro prf
+  # micro prf
   microPrf = (diag(s) / apply(s,1, sum))[1];
   
-  #majority class
+  # majority class
   mcIndex = which(rowsums==max(rowsums))[1] # majority-class index
   mcAccuracy = as.numeric(p[mcIndex]) 
-  mcRecall = 0*p;  mcRecall[mcIndex] = 1
-  mcPrecision = 0*p; mcPrecision[mcIndex] = p[mcIndex]
-  mcF1 = 0*p; mcF1[mcIndex] = 2 * mcPrecision[mcIndex] / (mcPrecision[mcIndex] + 1)
   
-  #random/expected accuracy
+  mcRecall = 0*p
+  mcRecall[mcIndex] = 1
+  
+  mcPrecision = 0*p
+  mcPrecision[mcIndex] = p[mcIndex]
+  
+  mcF1 = 0*p
+  mcF1[mcIndex] = 2 * mcPrecision[mcIndex] / (mcPrecision[mcIndex] + 1)
+  
+  # random/expected accuracy
   expAccuracy = sum(p*q)
-  #kappa
+  
+  # kappa
   kappa = (accuracy - expAccuracy) / (1 - expAccuracy)
   
-  #random guess
+  # Peirce Skill Score
+  a = sum(colsums * rowsums) / n^2
+  b = sum(rowsums^2) / n^2
+  pss <- (accuracy - a) / (1 - b)
+  
+  # random guess
   rgAccuracy = 1 / nc
   rgPrecision = p
   rgRecall = 0*p + 1 / nc
   rgF1 = 2 * p / (nc * p + 1)
   
-  #random weighted guess
+  # random weighted guess
   rwgAccurcy = sum(p^2)
   rwgPrecision = p
   rwgRecall = p
@@ -103,6 +113,7 @@ Evaluate = function(actual=NULL, predicted=NULL, cm=NULL){
     MajorityClassRecall = mcRecall,
     MajorityClassF1 = mcF1,
     Kappa = kappa,
+    PSS = pss,
     RandomGuessAccuracy = rgAccuracy,
     RandomGuessPrecision = rgPrecision,
     RandomGuessRecall = rgRecall,
